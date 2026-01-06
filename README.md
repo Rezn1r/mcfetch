@@ -11,6 +11,18 @@ A fast and beautiful CLI tool to fetch and display Minecraft server status with 
 
 ## Installation
 
+### Quick Install
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/Rezn1r/mcfetch/main/installer.ps1 | iex
+```
+
+**Linux/macOS:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Rezn1r/mcfetch/main/installer.sh | bash
+```
+
 ### From Source
 
 ```bash
@@ -54,7 +66,7 @@ mcfetch java donutsmp.net
 
 Fetch Bedrock server status with custom port:
 ```bash
-mcfetch bedrock demo.mcstatus.io 19132
+mcfetch bedrock demo.mcfetch.io 19132
 ```
 
 ### With Flags
@@ -125,4 +137,3 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 ## Acknowledgments
 
 - Powered by [mcstatus.io API](https://mcstatus.io)
-- Built with Go and love for Minecraft 🎮

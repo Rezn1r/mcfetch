@@ -20,6 +20,11 @@ try {
         "User-Agent" = "mcfetch-installer"
     }
     
+    if (-not $response -or -not $response.tag_name) {
+        Write-Host "Error: Failed to fetch release information." -ForegroundColor Red
+        exit 1
+    }
+    
     $version = $response.tag_name
     Write-Host "Latest version: $version" -ForegroundColor Green
     
@@ -68,6 +73,12 @@ try {
     }
     
     $fileSize = (Get-Item $exePath).Length
+    if ($fileSize -eq 0) {
+        Write-Host "Error: Downloaded file is empty." -ForegroundColor Red
+        Remove-Item $exePath -Force
+        exit 1
+    }
+    
     Write-Host "Installed to: $exePath ($([math]::Round($fileSize/1KB, 2)) KB)" -ForegroundColor Green
     
     # add to PATH automatically
