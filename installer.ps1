@@ -1,8 +1,7 @@
 # mcfetch Installer for Windows
 
 param(
-    [string]$InstallPath = "$env:LOCALAPPDATA\mcfetch",
-    [switch]$AddToPath
+    [string]$InstallPath = "$env:LOCALAPPDATA\mcfetch"
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,7 +23,7 @@ try {
     $version = $response.tag_name
     Write-Host "Latest version: $version" -ForegroundColor Green
     
-    # find Windows executable in assets
+    # find executable in assets
     $asset = $response.assets | Where-Object { $_.name -like "*windows*.exe" -or $_.name -like "*win*.exe" -or $_.name -eq "mcfetch.exe" }
     
     if (-not $asset) {
@@ -71,37 +70,27 @@ try {
     $fileSize = (Get-Item $exePath).Length
     Write-Host "Installed to: $exePath ($([math]::Round($fileSize/1KB, 2)) KB)" -ForegroundColor Green
     
-    if ($AddToPath) {
-        Write-Host ""
-        Write-Host "Adding to user PATH..." -ForegroundColor Yellow
-        
-        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-        
-        if ($userPath -notlike "*$InstallPath*") {
-            $newPath = "$userPath;$InstallPath"
-            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-            Write-Host "Added $InstallPath to PATH" -ForegroundColor Green
-            Write-Host "Please restart your terminal for PATH changes to take effect." -ForegroundColor Yellow
-        } else {
-            Write-Host "$InstallPath is already in PATH" -ForegroundColor Green
-        }
+    # add to PATH automatically
+    Write-Host ""
+    Write-Host "Adding to user PATH..." -ForegroundColor Yellow
+    
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    
+    if ($userPath -notlike "*$InstallPath*") {
+        $newPath = "$userPath;$InstallPath"
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        Write-Host "Added $InstallPath to PATH" -ForegroundColor Green
+        Write-Host "Please restart your terminal for PATH changes to take effect." -ForegroundColor Yellow
+    } else {
+        Write-Host "$InstallPath is already in PATH" -ForegroundColor Green
     }
     
     Write-Host ""
     Write-Host "Installation complete! ✓" -ForegroundColor Green
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor Cyan
-    
-    if ($AddToPath) {
-        Write-Host "  mcfetch java donutsmp.net" -ForegroundColor White
-        Write-Host "  mcfetch bedrock demo.mcstatus.io --verbose" -ForegroundColor White
-    } else {
-        Write-Host "  $exePath java donutsmp.net" -ForegroundColor White
-        Write-Host "  $exePath bedrock demo.mcstatus.io --verbose" -ForegroundColor White
-        Write-Host ""
-        Write-Host "Tip: Run with -AddToPath to add mcfetch to your PATH:" -ForegroundColor Yellow
-        Write-Host "  .\installer.ps1 -AddToPath" -ForegroundColor White
-    }
+    Write-Host "  mcfetch java donutsmp.net" -ForegroundColor White
+    Write-Host "  mcfetch bedrock demo.mcstatus.io --verbose" -ForegroundColor White
     
 } catch {
     Write-Host ""

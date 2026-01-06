@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Build Windows binary
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w" -o mcfetch-windows-amd64.exe .
+      
+      - name: Build Linux binary
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w" -o mcfetch-linux-amd64 .
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            mcfetch-windows-amd64.exe
+            mcfetch-linux-amd64
+          body: |
+            ## mcfetch ${{ steps.version.outputs.VERSION }}
+            
+            ### Installation
+            
+            **Windows:**
+            ```powershell
+            irm https://raw.githubusercontent.com/Rezn1r/mcfetch/main/installer.ps1 | iex
+            ```
+            
+            **Linux:**
+            ```bash
+            curl -L https://github.com/Rezn1r/mcfetch/releases/download/${{ steps.version.outputs.VERSION }}/mcfetch-linux-amd64 -o mcfetch
+            chmod +x mcfetch
+            sudo mv mcfetch /usr/local/bin/
+            ```
+            
+            ### Usage
+            ```
+            mcfetch java donutsmp.net
+            mcfetch bedrock demo.mcstatus.io --verbose
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
