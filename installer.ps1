@@ -104,7 +104,8 @@ try {
     Write-Host "  mcfetch bedrock demo.mcstatus.io --verbose" -ForegroundColor White
     
 } catch {
-    Write-Host ""
+    Write-Host "" -ForegroundColor Red
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Installation failed." -ForegroundColor Red
     exit 1
 }
