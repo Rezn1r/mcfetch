@@ -60,9 +60,7 @@ jobs:
             
             **Linux:**
             ```bash
-            curl -L https://github.com/Rezn1r/mcfetch/releases/download/${{ steps.version.outputs.VERSION }}/mcfetch-linux-amd64 -o mcfetch
-            chmod +x mcfetch
-            sudo mv mcfetch /usr/local/bin/
+            curl -sSL https://raw.githubusercontent.com/Rezn1r/mcfetch/main/installer.sh | bash
             ```
             
             ### Usage
