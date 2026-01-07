@@ -26,6 +26,7 @@ func main() {
 	verbose := fs.Bool("verbose", false, "Print extra details")
 	noColor := fs.Bool("no-color", false, "Disable colorized output")
 	dryRun := fs.Bool("dry-run", false, "Show what would be fetched without calling the API")
+	uninstall := fs.Bool("uninstall", false, "Uninstall mcfetch from this system")
 
 	fs.Usage = func() {
 		printHelp(fs)
@@ -33,6 +34,12 @@ func main() {
 
 	if err := fs.Parse(flagArgs); err != nil {
 		os.Exit(2)
+	}
+
+	// Handle uninstall flag
+	if *uninstall {
+		handleUninstall()
+		return
 	}
 
 	if len(positional) < 2 {
@@ -293,4 +300,51 @@ func binName() string {
 		return "mcstatus"
 	}
 	return name
+}
+
+func handleUninstall() {
+	exePath, err := os.Executable()
+	if err != nil {
+		printError(fmt.Sprintf("Failed to get executable path: %v", err))
+		os.Exit(1)
+	}
+
+	// Resolve symlinks
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		printError(fmt.Sprintf("Failed to resolve executable path: %v", err))
+		os.Exit(1)
+	}
+
+	fmt.Println(color.CyanString("mcfetch Uninstaller"))
+	fmt.Println(color.CyanString("==================="))
+	fmt.Println()
+
+	fmt.Printf("%s Executable path: %s\n", color.YellowString("→"), exePath)
+	fmt.Println()
+
+	fmt.Print(color.YellowString("Are you sure you want to uninstall mcfetch? [y/N]: "))
+	var response string
+	fmt.Scanln(&response)
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	if response != "y" && response != "yes" {
+		fmt.Println(color.YellowString("Uninstall cancelled."))
+		return
+	}
+
+	fmt.Println()
+	fmt.Println(color.YellowString("Removing mcfetch..."))
+
+	// Remove the executable
+	if err := os.Remove(exePath); err != nil {
+		printError(fmt.Sprintf("Failed to remove executable: %v", err))
+		os.Exit(1)
+	}
+
+	fmt.Println(color.GreenString("✓ Removed: %s", exePath))
+	fmt.Println()
+	fmt.Println(color.GreenString("Uninstallation complete!"))
+	fmt.Println()
+	fmt.Println(color.YellowString("Note: You may need to manually remove the directory from your PATH if it was added."))
 }

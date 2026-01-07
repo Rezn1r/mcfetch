@@ -3,7 +3,7 @@
 
 set -e
 
-REPO="Rezn1r/mcstatus"
+REPO="Rezn1r/mcfetch"
 API_URL="https://api.github.com/repos/$REPO/releases/latest"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 BINARY_NAME="mcfetch"
@@ -46,9 +46,11 @@ fi
 
 echo -e "${GREEN}Latest version: $VERSION${NC}"
 
-DOWNLOAD_URL=$(echo "$RESPONSE" | grep -o '"browser_download_url": *"[^"]*linux[^"]*amd64[^"]*"' | head -1 | sed 's/"browser_download_url": *"\(.*\)"/\1/')
+# Find Linux amd64 binary - match mcfetch-linux-amd64
+DOWNLOAD_URL=$(echo "$RESPONSE" | grep -o '"browser_download_url": *"[^"]*mcfetch-linux-amd64"' | head -1 | sed 's/"browser_download_url": *"\(.*\)"/\1/')
 
 if [ -z "$DOWNLOAD_URL" ]; then
+    # Fallback: try any linux binary
     DOWNLOAD_URL=$(echo "$RESPONSE" | grep -o '"browser_download_url": *"[^"]*linux[^"]*"' | head -1 | sed 's/"browser_download_url": *"\(.*\)"/\1/')
 fi
 

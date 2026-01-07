@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repo = "Rezn1r/mcstatus"
+$repo = "Rezn1r/mcfetch"
 $apiUrl = "https://api.github.com/repos/$repo/releases/latest"
 
 Write-Host "mcfetch Installer" -ForegroundColor Cyan
@@ -28,11 +28,16 @@ try {
     $version = $response.tag_name
     Write-Host "Latest version: $version" -ForegroundColor Green
     
-    # find executable in assets
-    $asset = $response.assets | Where-Object { $_.name -like "*windows*.exe" -or $_.name -like "*win*.exe" -or $_.name -eq "mcfetch.exe" }
+    # find Windows executable - match mcfetch-windows-amd64.exe
+    $asset = $response.assets | Where-Object { $_.name -eq "mcfetch-windows-amd64.exe" }
     
     if (-not $asset) {
-        # try to find any .exe file
+        # fallback: try common patterns
+        $asset = $response.assets | Where-Object { $_.name -like "*windows*.exe" -or $_.name -like "*win*.exe" }
+    }
+    
+    if (-not $asset) {
+        # last resort: any .exe file
         $asset = $response.assets | Where-Object { $_.name -like "*.exe" }
     }
     
