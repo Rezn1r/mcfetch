@@ -48,8 +48,11 @@ mcfetch <java|bedrock> <host> [port] [flags]
 ### Flags
 
 - `--verbose`: Display extra details (EULA, cache, mods, plugins, SRV records)
-- `--no-color`: Disable colorized output
 - `--dry-run`: Show what would be fetched without making API calls
+- `--version`: Print version information and exit 
+- `--no-color`: Disable colorized output
+- `--update`: Update mcfetch to the latest release 
+- `--uninstall`: Uninstall mcfetch from this system
 
 ## Examples
 
