@@ -1,13 +1,13 @@
 # mcfetch
 
-A fast and beautiful CLI tool to fetch and display Minecraft server status with styled output.
+A fast and beautiful CLI tool to fetch and display Minecraft server status.
 
 ![Screenshot of mcfetch](https://files.catbox.moe/nwmmf2.png)
 
 ## Features
 
 - Support for both **Java** and **Bedrock** editions
-- Beautiful boxed output with color support
+- Beautiful TUI output
 - Verbose mode for detailed server information
 - Single binary, no dependencies required
 
