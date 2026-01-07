@@ -31,12 +31,6 @@ cd mcfetch
 go build -o mcfetch
 ```
 
-### Using Go Install
-
-```bash
-go install github.com/Rezn1r/mcfetch@latest
-```
-
 ## Usage
 
 ```bash
