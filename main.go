@@ -4,10 +4,15 @@ package main
 // usage: mcfetch <edition> <host> [port]
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -21,11 +26,13 @@ import (
 
 func main() {
 	flagArgs, positional := splitArgs(os.Args[1:])
-
+	versionNumber := "v1.1.0"
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	verbose := fs.Bool("verbose", false, "Print extra details")
+	version := fs.Bool("version", false, "Print version information and exit")
 	noColor := fs.Bool("no-color", false, "Disable colorized output")
 	dryRun := fs.Bool("dry-run", false, "Show what would be fetched without calling the API")
+	update := fs.Bool("update", false, "Update mcfetch to the latest release")
 	uninstall := fs.Bool("uninstall", false, "Uninstall mcfetch from this system")
 
 	fs.Usage = func() {
@@ -34,6 +41,21 @@ func main() {
 
 	if err := fs.Parse(flagArgs); err != nil {
 		os.Exit(2)
+	}
+
+	// Handle update flag
+	if *update {
+		if err := handleUpdate(); err != nil {
+			printError(err.Error())
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Handle version flag
+	if *version {
+		fmt.Printf("mcfetch %s\n", versionNumber)
+		return
 	}
 
 	// Handle uninstall flag
@@ -347,4 +369,191 @@ func handleUninstall() {
 	fmt.Println(color.GreenString("Uninstallation complete!"))
 	fmt.Println()
 	fmt.Println(color.YellowString("Note: You may need to manually remove the directory from your PATH if it was added."))
+}
+
+// Update handling
+
+type ghRelease struct {
+	TagName string `json:"tag_name"`
+	Assets  []struct {
+		Name string `json:"name"`
+		URL  string `json:"browser_download_url"`
+	} `json:"assets"`
+}
+
+func handleUpdate() error {
+	fmt.Println(color.CyanString("mcfetch Updater"))
+	fmt.Println(color.CyanString("================"))
+
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve executable path: %w", err)
+	}
+
+	fmt.Printf("%s Current: %s\n", color.YellowString("→"), exePath)
+
+	rel, err := fetchLatestRelease()
+	if err != nil {
+		return err
+	}
+
+	assetURL, assetName := pickAssetForCurrentPlatform(rel)
+	if assetURL == "" {
+		var names []string
+		for _, a := range rel.Assets {
+			names = append(names, a.Name)
+		}
+		return fmt.Errorf("no compatible asset found for %s/%s. Available: %s", runtime.GOOS, runtime.GOARCH, strings.Join(names, ", "))
+	}
+
+	fmt.Printf("%s Latest: %s\n", color.YellowString("→"), rel.TagName)
+	fmt.Printf("%s Downloading: %s\n", color.YellowString("→"), assetName)
+
+	dir := filepath.Dir(exePath)
+	tmpFile, err := os.CreateTemp(dir, "mcfetch-update-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer tmpFile.Close()
+
+	if err := downloadToFile(assetURL, tmpFile); err != nil {
+		return err
+	}
+
+	if runtime.GOOS != "windows" {
+		if err := tmpFile.Chmod(0o755); err != nil {
+			return fmt.Errorf("failed to chmod new binary: %w", err)
+		}
+		// Replace in-place (safe on Unix; running inode stays mapped)
+		if err := os.Rename(tmpPath, exePath); err != nil {
+			return fmt.Errorf("failed to replace binary: %w", err)
+		}
+		fmt.Println(color.GreenString("✓ Updated successfully to %s", rel.TagName))
+		return nil
+	}
+
+	// Windows: running executable is locked. Use a PowerShell helper.
+	newPath := exePath + ".new.exe"
+	// Close the temp file and move into place as .new.exe in the same directory
+	tmpFile.Close()
+	if err := moveOrCopy(tmpPath, newPath); err != nil {
+		return fmt.Errorf("failed to prepare new binary: %w", err)
+	}
+
+	psScript := `param([string]$Target, [string]$NewFile, [int]$Pid)
+try { Wait-Process -Id $Pid -ErrorAction SilentlyContinue } catch {}
+Start-Sleep -Milliseconds 200
+Move-Item -Path $NewFile -Destination $Target -Force
+Write-Output "Updated $Target"`
+
+	psPath := filepath.Join(dir, "mcfetch-update.ps1")
+	if err := os.WriteFile(psPath, []byte(psScript), 0o644); err != nil {
+		return fmt.Errorf("failed to write helper script: %w", err)
+	}
+
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psPath, "-Target", exePath, "-NewFile", newPath, "-Pid", fmt.Sprint(os.Getpid()))
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start updater: %w", err)
+	}
+
+	fmt.Println(color.GreenString("✓ Update staged. The binary will be replaced after this process exits."))
+	fmt.Println(color.YellowString("Note: If replacement fails due to permissions, run as Administrator."))
+	return nil
+}
+
+func fetchLatestRelease() (*ghRelease, error) {
+	const api = "https://api.github.com/repos/Rezn1r/mcfetch/releases/latest"
+	req, err := http.NewRequest("GET", api, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "mcfetch-updater")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("github api returned %s", resp.Status)
+	}
+	var rel ghRelease
+	dec := json.NewDecoder(resp.Body)
+	if err := dec.Decode(&rel); err != nil {
+		return nil, err
+	}
+	return &rel, nil
+}
+
+func pickAssetForCurrentPlatform(rel *ghRelease) (url string, name string) {
+	osName := runtime.GOOS
+	arch := runtime.GOARCH
+	candidates := []string{
+		fmt.Sprintf("mcfetch-%s-%s", osName, arch),
+		fmt.Sprintf("%s-%s", osName, arch),
+		osName,
+	}
+	for _, a := range rel.Assets {
+		n := strings.ToLower(a.Name)
+		for _, c := range candidates {
+			if strings.Contains(n, c) {
+				return a.URL, a.Name
+			}
+		}
+		// Special-case windows .exe naming
+		if osName == "windows" && (strings.HasSuffix(n, ".exe")) && strings.Contains(n, arch) {
+			return a.URL, a.Name
+		}
+	}
+	return "", ""
+}
+
+func downloadToFile(url string, out io.Writer) error {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "mcfetch-updater")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("download failed: %s", resp.Status)
+	}
+	if _, err := io.Copy(out, resp.Body); err != nil {
+		return err
+	}
+	return nil
+}
+
+func moveOrCopy(src, dst string) error {
+	// Try rename first (same volume)
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	}
+	// Fallback to copy
+	rf, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer rf.Close()
+	wf, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer wf.Close()
+	if _, err := io.Copy(wf, rf); err != nil {
+		return err
+	}
+	if err := wf.Close(); err != nil {
+		return err
+	}
+	_ = os.Remove(src)
+	return nil
 }
