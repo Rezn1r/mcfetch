@@ -90,21 +90,6 @@ Combine multiple flags:
 mcfetch bedrock play.example.com 19132 --verbose --no-color
 ```
 
-## Output
-
-### Java Edition Example
-
-```
-┏━ Java Edition ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Host:    donutsmp.net:25565                      ┃
-┃ IP:      123.45.67.89                            ┃
-┃ Status:  Online                                  ┃
-┃ Players: 30369 / 50000                           ┃
-┃ Version: Velocity 1.7.2-1.21.1                   ┃
-┃ MOTD:    DonutSMP.net - Survival                 ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-```
-
 ### Verbose Mode
 
 With `--verbose`, additional information is displayed:
