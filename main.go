@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	box "github.com/Delta456/box-cli-maker/v2"
+	box "github.com/box-cli-maker/box-cli-maker/v3"
 	"github.com/fatih/color"
 	"github.com/mcstatus-io/go-mcstatus"
 	"golang.org/x/text/cases"
@@ -265,12 +265,18 @@ func splitArgs(args []string) (flagArgs []string, positional []string) {
 }
 
 func printBox(title string, lines []string) {
-	colorName := "Cyan"
+	boxColor := box.Cyan
 	if color.NoColor {
-		colorName = "White"
+		boxColor = box.White
 	}
-	b := box.New(box.Config{Px: 1, Py: 0, Type: "Bold", Color: colorName, TitlePos: "Top"})
-	b.Print(title, strings.Join(lines, "\n"))
+
+	b := box.NewBox().
+		Padding(1, 0).
+		Style(box.Bold).
+		Color(boxColor).
+		TitlePosition(box.Top)
+
+	fmt.Println(b.MustRender(title, strings.Join(lines, "\n")))
 }
 
 func formatField(label, value string) string {
