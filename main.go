@@ -26,7 +26,7 @@ import (
 
 func main() {
 	flagArgs, positional := splitArgs(os.Args[1:])
-	versionNumber := "v1.1.0"
+	versionNumber := "v1.2.1"
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	verbose := fs.Bool("verbose", false, "Print extra details")
 	version := fs.Bool("version", false, "Print version information and exit")
